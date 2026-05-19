@@ -8,6 +8,13 @@
       "when": 1757850562913,
       "tag": "0000_initial_schemas_migration",
       "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "6",
+      "when": 1779200664503,
+      "tag": "0001_fair_human_fly",
+      "breakpoints": true
     }
   ]
 }

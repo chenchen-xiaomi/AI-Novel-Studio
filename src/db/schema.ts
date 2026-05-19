@@ -6,3 +6,14 @@ export {
 } from "@/modules/auth/schemas/auth.schema";
 export { categories } from "@/modules/todos/schemas/category.schema";
 export { todos } from "@/modules/todos/schemas/todo.schema";
+export {
+    novels,
+    worlds,
+    characters,
+    plotLines,
+    chapters,
+    memories,
+    satisfactionPoints,
+    foreshadows,
+    rhythmChecks,
+} from "@/modules/novel-studio/schemas/novel.schema";
