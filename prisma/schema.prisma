@@ -1,0 +1,193 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+// ========== 小说项目 ==========
+model Novel {
+  id              String   @id @default(cuid())
+  title           String
+  genre           String   // 末世、都市、玄幻、仙侠...
+  subGenres       String   // JSON array: 后宫、系统、苟道、签到...
+  style           String   @default("番茄男频")
+  description     String?
+  targetChapters  Int      @default(500)
+  status          String   @default("planning") // planning, worldbuilding, writing, paused, completed
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  world            World?
+  characters       Character[]
+  plotLines        PlotLine[]
+  chapters         Chapter[]
+  memories         Memory[]
+  satisfactionPts  SatisfactionPoint[]
+  foreshadows      Foreshadow[]
+  rhythms          RhythmCheck[]
+}
+
+// ========== 世界观 ==========
+model World {
+  id            String @id @default(cuid())
+  novelId       String @unique
+  novel         Novel  @relation(fields: [novelId], references: [id], onDelete: Cascade)
+
+  era           String?  // 时代背景
+  timeline      String   @default("[]") // JSON: [{day:1, event:"高温来袭"},...]
+  locations     String   @default("[]") // JSON: [{name:"大学", desc:"主角初始地点"},...]
+  resources     String   @default("{}") // JSON: {水:稀缺, 食物:紧张, 武器:稀有}
+  powerSystem   String?  // JSON: power/cultivation system
+  factions      String?  // JSON: [{name:"官方基地", leader:"xxx", attitude:"中立"}]
+  rules         String?  // JSON: world rules/constraints
+}
+
+// ========== 角色（含状态机） ==========
+model Character {
+  id            String   @id @default(cuid())
+  novelId       String
+  novel         Novel    @relation(fields: [novelId], references: [id], onDelete: Cascade)
+
+  name          String
+  title         String?  // 身份：校花、人妻教师、军医...
+  role          String   // protagonist, heroine, villain, supporting, minor
+  gender        String   @default("male")
+
+  appearance    String?  // 外貌视觉记忆点
+  personality   String?  // 性格
+  backstory     String?  // 背景
+  catchphrase   String?  // 口头禅
+
+  // --- 状态机核心 ---
+  affection     Int      @default(0)   // 好感度 0-100
+  loyalty       Int      @default(50)  // 忠诚度 0-100
+  desire        Int      @default(0)   // 欲望值 0-100
+  fear          Int      @default(0)   // 恐惧值 0-100
+  dependence    Int      @default(0)   // 依赖度 0-100
+  darkness      Int      @default(0)   // 黑化值 0-100
+  combatPower   Int      @default(10)  // 战力值
+  charm         Int      @default(50)  // 魅力值 0-100
+
+  // --- 功能属性 ---
+  functionType  String?  // 医疗/战斗/情报/后勤/技术...
+  romanticLine  String?  // 感情线进展描述
+  notableScene  String?  // 名场面
+  desireDriver  String?  // 欲望驱动：复仇/求生/守护/称霸...
+
+  status        String   @default("active") // active, dead, missing, sealed, left
+  firstAppear   Int?     // 首次出场章节
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+}
+
+// ========== 剧情线 ==========
+model PlotLine {
+  id            String   @id @default(cuid())
+  novelId       String
+  novel         Novel    @relation(fields: [novelId], references: [id], onDelete: Cascade)
+
+  type          String   // main, sub, hidden
+  title         String
+  description   String
+  status        String   @default("planned") // planned, active, climax, resolved, abandoned
+  priority      Int      @default(5)  // 1-10
+  startChapter  Int?
+  endChapter    Int?
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+}
+
+// ========== 章节 ==========
+model Chapter {
+  id              String   @id @default(cuid())
+  novelId         String
+  novel           Novel    @relation(fields: [novelId], references: [id], onDelete: Cascade)
+
+  chapterNum      Int
+  title           String
+  content         String?
+
+  // 章节结构
+  openingHook     String?  // 开头钩子
+  conflict        String?  // 核心冲突
+  climax          String?  // 高潮/爽点
+  endingHook      String?  // 结尾钩子/悬念
+
+  // 数据指标
+  wordCount       Int      @default(0)
+  satisfactionScore Int    @default(0) // 爽点评分 0-100
+  tensionLevel    Int      @default(5)  // 紧张度 1-10
+  emotionType     String?  // 压抑、逆袭、震惊、崇拜...
+
+  status          String   @default("planned") // planned, writing, completed
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  memories        Memory[]
+}
+
+// ========== 上下文记忆 ==========
+model Memory {
+  id            String   @id @default(cuid())
+  novelId       String
+  novel         Novel    @relation(fields: [novelId], references: [id], onDelete: Cascade)
+  chapterId     String?
+  chapter       Chapter? @relation(fields: [chapterId], references: [id], onDelete: SetNull)
+
+  type          String   // chapter_summary, character_change, relationship, resource_change, world_event, foreshadow
+  content       String
+  importance    Int      @default(5) // 1-10
+  chapterNum    Int?
+  createdAt     DateTime @default(now())
+}
+
+// ========== 爽点数据库 ==========
+model SatisfactionPoint {
+  id            String   @id @default(cuid())
+  novelId       String
+  novel         Novel    @relation(fields: [novelId], references: [id], onDelete: Cascade)
+
+  type          String   // face_slap(打脸), reversal(反转), power_up(升级), treasure(获宝), harem(后宫互动), crisis(危机)
+  title         String
+  description   String
+  formula       String?  // 压迫→羞辱→反转→碾压→震惊→崇拜
+  intensity     Int      @default(5)  // 1-10 爽度
+  used          Boolean  @default(false)
+  usedChapter   Int?
+  tags          String?  // JSON array of tags
+  createdAt     DateTime @default(now())
+}
+
+// ========== 伏笔 ==========
+model Foreshadow {
+  id              String   @id @default(cuid())
+  novelId         String
+  novel           Novel    @relation(fields: [novelId], references: [id], onDelete: Cascade)
+
+  title           String
+  description     String
+  plantedChapter  Int
+  resolvedChapter Int?
+  status          String   @default("planted") // planted, developing, resolved, abandoned
+  importance      Int      @default(5) // 1-10
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+}
+
+// ========== 节奏检测 ==========
+model RhythmCheck {
+  id            String   @id @default(cuid())
+  novelId       String
+  novel         Novel    @relation(fields: [novelId], references: [id], onDelete: Cascade)
+
+  chapterNum    Int
+  hasClimax     Boolean  @default(false)
+  heroineAppear Boolean  @default(false)
+  faceSlap      Boolean  @default(false)
+  tensionScore  Int      @default(5)
+  suggestion    String?
+  checkedAt     DateTime @default(now())
+}
